@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: fastappoint
+  datasource:
+    url: jdbc:postgresql://localhost:5433/fastappoint
+    username: postgres
+    password: parola123
+  jpa:
+    hibernate:
+      ddl-auto: create
+    show-sql: true
+
+app:
+  cors:
+    allowed-origin: http://localhost:4200

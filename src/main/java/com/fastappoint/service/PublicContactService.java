@@ -2,6 +2,8 @@ package com.fastappoint.service;
 
 import com.fastappoint.dto.PublicContactMessageRequest;
 import com.fastappoint.exception.ContactDeliveryException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
@@ -12,6 +14,8 @@ import org.springframework.util.StringUtils;
 
 @Service
 public class PublicContactService {
+    private static final Logger log = LoggerFactory.getLogger(PublicContactService.class);
+
     @Nullable
     private final JavaMailSender mailSender;
     private final boolean enabled;
@@ -52,6 +56,7 @@ public class PublicContactService {
         try {
             mailSender.send(message);
         } catch (MailException ex) {
+            log.error("Failed to deliver contact message via {}", mailHost, ex);
             throw new ContactDeliveryException("Could not deliver contact message", ex);
         }
     }

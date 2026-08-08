@@ -23,11 +23,12 @@ public class PublicContactService {
                                 @Value("${app.contact.enabled:false}") boolean enabled,
                                 @Value("${app.contact.recipient-email}") String recipientEmail,
                                 @Value("${app.contact.from-email}") String fromEmail,
+                                @Value("${spring.mail.username:contactfastappoint@gmail.com}") String mailUsername,
                                 @Value("${spring.mail.host:}") String mailHost) {
         this.mailSender = mailSender;
         this.enabled = enabled;
         this.recipientEmail = recipientEmail;
-        this.fromEmail = fromEmail;
+        this.fromEmail = StringUtils.hasText(fromEmail) ? fromEmail : mailUsername;
         this.mailHost = mailHost;
     }
 

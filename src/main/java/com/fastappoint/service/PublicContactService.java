@@ -8,6 +8,7 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 @Service
 public class PublicContactService {
@@ -16,15 +17,18 @@ public class PublicContactService {
     private final boolean enabled;
     private final String recipientEmail;
     private final String fromEmail;
+    private final String mailHost;
 
     public PublicContactService(@Nullable JavaMailSender mailSender,
                                 @Value("${app.contact.enabled:false}") boolean enabled,
                                 @Value("${app.contact.recipient-email}") String recipientEmail,
-                                @Value("${app.contact.from-email}") String fromEmail) {
+                                @Value("${app.contact.from-email}") String fromEmail,
+                                @Value("${spring.mail.host:}") String mailHost) {
         this.mailSender = mailSender;
         this.enabled = enabled;
         this.recipientEmail = recipientEmail;
         this.fromEmail = fromEmail;
+        this.mailHost = mailHost;
     }
 
     public void send(PublicContactMessageRequest request) {
@@ -32,6 +36,9 @@ public class PublicContactService {
             throw new ContactDeliveryException("Contact form is temporarily unavailable");
         }
         if (mailSender == null) {
+            throw new ContactDeliveryException("Mail delivery is not configured");
+        }
+        if (!StringUtils.hasText(mailHost)) {
             throw new ContactDeliveryException("Mail delivery is not configured");
         }
 

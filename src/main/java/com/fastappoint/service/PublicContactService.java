@@ -6,16 +6,18 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Service;
 
 @Service
 public class PublicContactService {
+    @Nullable
     private final JavaMailSender mailSender;
     private final boolean enabled;
     private final String recipientEmail;
     private final String fromEmail;
 
-    public PublicContactService(JavaMailSender mailSender,
+    public PublicContactService(@Nullable JavaMailSender mailSender,
                                 @Value("${app.contact.enabled:false}") boolean enabled,
                                 @Value("${app.contact.recipient-email}") String recipientEmail,
                                 @Value("${app.contact.from-email}") String fromEmail) {
@@ -28,6 +30,9 @@ public class PublicContactService {
     public void send(PublicContactMessageRequest request) {
         if (!enabled) {
             throw new ContactDeliveryException("Contact form is temporarily unavailable");
+        }
+        if (mailSender == null) {
+            throw new ContactDeliveryException("Mail delivery is not configured");
         }
 
         SimpleMailMessage message = new SimpleMailMessage();

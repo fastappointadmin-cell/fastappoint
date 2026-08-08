@@ -6,7 +6,7 @@ spring:
     name: fastappoint
   datasource:
     # Local default; on Railway, either SPRING_DATASOURCE_URL or the PG* vars from the PostgreSQL addon are used.
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/fastappoint}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:fastappoint}}
     username: ${PGUSER:postgres}
     password: ${PGPASSWORD:parola123}
   jpa:

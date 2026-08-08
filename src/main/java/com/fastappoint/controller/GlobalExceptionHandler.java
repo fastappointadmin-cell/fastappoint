@@ -4,7 +4,6 @@ import com.fastappoint.dto.ErrorResponse;
 import com.fastappoint.exception.AppointmentNotFoundException;
 import com.fastappoint.exception.AuthenticationFailedException;
 import com.fastappoint.exception.BusinessNotFoundException;
-import com.fastappoint.exception.ContactDeliveryException;
 import com.fastappoint.exception.EmailAlreadyInUseException;
 import com.fastappoint.exception.ForbiddenException;
 import com.fastappoint.exception.InvalidAppointmentException;
@@ -115,18 +114,6 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
-    }
-
-    @ExceptionHandler(ContactDeliveryException.class)
-    public ResponseEntity<ErrorResponse> handleContactDelivery(
-            ContactDeliveryException ex, HttpServletRequest request) {
-        ErrorResponse error = new ErrorResponse(
-                HttpStatus.SERVICE_UNAVAILABLE.value(),
-                "Contact Delivery Failed",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

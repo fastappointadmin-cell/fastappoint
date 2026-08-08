@@ -55,13 +55,3 @@ app:
     # require HTTPS and get silently dropped, and SameSite=None requires Secure. Same-origin + Lax needs
     # neither. MUST be true (via APP_COOKIE_SECURE=true) in any real deployment served over HTTPS.
     secure: ${APP_COOKIE_SECURE:false}
-  contact:
-    enabled: ${APP_CONTACT_ENABLED:false}
-    recipient-email: ${APP_CONTACT_RECIPIENT_EMAIL:contactfastappoint@gmail.com}
-    from-email: ${APP_CONTACT_FROM_EMAIL:no-reply@fastappoint.app}
-    resend:
-      # Sends mail over Resend's HTTPS API instead of raw SMTP -- Railway's network cannot reach
-      # smtp.gmail.com on any port (confirmed with a direct TCP test from inside the container), so
-      # SMTP delivery is a dead end here regardless of Spring/Gmail configuration.
-      api-url: ${APP_CONTACT_RESEND_API_URL:https://api.resend.com/emails}
-      api-key: ${APP_CONTACT_RESEND_API_KEY:}

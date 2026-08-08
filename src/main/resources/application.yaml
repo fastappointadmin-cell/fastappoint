@@ -31,10 +31,10 @@ spring:
 
 app:
   cors:
-    # In production set APP_CORS_ALLOWED_ORIGINS to your Railway frontend URL (e.g. https://fastappoint-web.up.railway.app).
-    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
-    allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:4200}
-  frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:4200}
+  # In production allow the frontend host and the API subdomain.
+  allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:https://fastappoint.app,https://api.fastappoint.app,http://localhost:4200,http://127.0.0.1:4200}
+  allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:https://fastappoint.app}
+  frontend-base-url: ${APP_FRONTEND_BASE_URL:https://fastappoint.app}
   chat:
     llm:
       enabled: ${APP_CHAT_LLM_ENABLED:false}

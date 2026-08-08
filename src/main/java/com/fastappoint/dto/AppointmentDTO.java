@@ -8,6 +8,8 @@ public class AppointmentDTO {
     private UUID id;
     private UUID businessId;
     private UUID serviceId;
+    private String serviceName; // null for manual bookings
+    private String manualLabel; // null for service bookings
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private String status;
@@ -17,11 +19,14 @@ public class AppointmentDTO {
 
     public AppointmentDTO() {}
 
-    public AppointmentDTO(UUID id, UUID businessId, UUID serviceId, LocalDateTime startTime,
-                          LocalDateTime endTime, String status, String customerName, String customerPhone) {
+    public AppointmentDTO(UUID id, UUID businessId, UUID serviceId, String serviceName, String manualLabel,
+                          LocalDateTime startTime, LocalDateTime endTime, String status,
+                          String customerName, String customerPhone) {
         this.id = id;
         this.businessId = businessId;
         this.serviceId = serviceId;
+        this.serviceName = serviceName;
+        this.manualLabel = manualLabel;
         this.startTime = startTime;
         this.endTime = endTime;
         this.status = status;
@@ -29,12 +34,14 @@ public class AppointmentDTO {
         this.customerPhone = customerPhone;
     }
 
-    public AppointmentDTO(UUID id, UUID businessId, UUID serviceId, LocalDateTime startTime,
-                          LocalDateTime endTime, String status, String customerName, String customerPhone,
-                          List<ResourceAllocationDTO> allocations) {
-        this(id, businessId, serviceId, startTime, endTime, status, customerName, customerPhone);
+    public AppointmentDTO(UUID id, UUID businessId, UUID serviceId, String serviceName, String manualLabel,
+                          LocalDateTime startTime, LocalDateTime endTime, String status,
+                          String customerName, String customerPhone, List<ResourceAllocationDTO> allocations) {
+        this(id, businessId, serviceId, serviceName, manualLabel, startTime, endTime, status, customerName, customerPhone);
         this.allocations = allocations;
     }
+
+   
 
     // Getters and Setters
     public UUID getId() { return id; }
@@ -45,6 +52,12 @@ public class AppointmentDTO {
 
     public UUID getServiceId() { return serviceId; }
     public void setServiceId(UUID serviceId) { this.serviceId = serviceId; }
+
+    public String getServiceName() { return serviceName; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
+
+    public String getManualLabel() { return manualLabel; }
+    public void setManualLabel(String manualLabel) { this.manualLabel = manualLabel; }
 
     public LocalDateTime getStartTime() { return startTime; }
     public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }

@@ -1,6 +1,5 @@
 package com.fastappoint.dto;
 
-import java.util.Set;
 import java.util.UUID;
 
 public class ResourceDTO {
@@ -10,19 +9,30 @@ public class ResourceDTO {
     private String name;
     private String typeName;
     private Integer capacity;
-    private Set<CapabilityRefDTO> capabilities;
+    private String mergeGroup;
+    private java.util.List<ResourceAttributeValueDTO> attributeValues;
 
     public ResourceDTO() {
     }
 
-    public ResourceDTO(UUID id, UUID businessId, UUID typeId, String name, String typeName, Integer capacity, Set<CapabilityRefDTO> capabilities) {
+    public ResourceDTO(
+            UUID id,
+            UUID businessId,
+            UUID typeId,
+            String name,
+            String typeName,
+            Integer capacity,
+            String mergeGroup,
+            java.util.List<ResourceAttributeValueDTO> attributeValues
+    ) {
         this.id = id;
         this.businessId = businessId;
         this.typeId = typeId;
         this.name = name;
         this.typeName = typeName;
         this.capacity = capacity;
-        this.capabilities = capabilities;
+        this.mergeGroup = mergeGroup;
+        this.attributeValues = attributeValues;
     }
 
     public UUID getId() {
@@ -73,12 +83,20 @@ public class ResourceDTO {
         this.capacity = capacity;
     }
 
-    public Set<CapabilityRefDTO> getCapabilities() {
-        return capabilities;
+    public String getMergeGroup() {
+        return mergeGroup;
     }
 
-    public void setCapabilities(Set<CapabilityRefDTO> capabilities) {
-        this.capabilities = capabilities;
+    public void setMergeGroup(String mergeGroup) {
+        this.mergeGroup = mergeGroup;
     }
+
+    public java.util.List<ResourceAttributeValueDTO> getAttributeValues() {
+        return attributeValues;
+    }
+
+    public void setAttributeValues(java.util.List<ResourceAttributeValueDTO> attributeValues) {
+        this.attributeValues = attributeValues;
+    }
+
 }
-

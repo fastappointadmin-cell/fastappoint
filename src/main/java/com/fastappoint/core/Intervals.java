@@ -70,4 +70,18 @@ public final class Intervals {
         }
         return gaps;
     }
+
+    /**
+     * True when {@code needed} fits entirely inside one of the free intervals.
+     * Because free intervals are disjoint and a booking is contiguous, a booking
+     * that fits at all must fit within a single free interval.
+     */
+    public static boolean covers(List<Interval> free, Interval needed) {
+        for (Interval f : free) {
+            if (!f.start().isAfter(needed.start()) && !f.end().isBefore(needed.end())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

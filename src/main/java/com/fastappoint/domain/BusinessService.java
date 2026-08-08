@@ -1,21 +1,17 @@
 package com.fastappoint.domain;
 
-import com.fastappoint.core.AllocationMode;
 import jakarta.persistence.*;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
  * Something a business offers ("Haircut", "Dinner reservation", "Brake change").
  * A service is defined entirely by its total duration + a list of requirements.
- * There is deliberately NO single allocation strategy here: strategy lives per
- * requirement line, because one service can mix modes.
  */
 @Entity
 @Table(name = "business_service")
@@ -56,18 +52,24 @@ public class BusinessService {
         this.duration = duration;
     }
 
-    /** Fixed-count line: SINGLE (n=1) or MULTIPLE (n>1) resources of a type. */
-    public ServiceRequirement require(ResourceType type, AllocationMode mode, int quantity) {
-        ServiceRequirement req = ServiceRequirement.fixed(this, type, mode, quantity);
+    /**
+     * Add a requirement line: {@code quantity} resources of {@code type} are needed.
+     * Returns the requirement so callers can chain advanced options (.withLabel(), .withNotes()).
+     */
+    public ServiceRequirement addRequirement(ResourceType type, int quantity) {
+        ServiceRequirement req = new ServiceRequirement(this, type, quantity);
         requirements.add(req);
         return req;
     }
 
-    /** MERGE line whose demand is supplied at booking time (e.g. "partySize"). */
-    public ServiceRequirement requireMerged(ResourceType type, String demandParameter) {
-        ServiceRequirement req = ServiceRequirement.merged(this, type, demandParameter);
-        requirements.add(req);
-        return req;
+    public Optional<ServiceRequirement> findRequirement(UUID requirementId) {
+        return requirements.stream()
+                .filter(requirement -> requirement.getId().equals(requirementId))
+                .findFirst();
+    }
+
+    public boolean removeRequirement(UUID requirementId) {
+        return requirements.removeIf(requirement -> requirement.getId().equals(requirementId));
     }
 
     public UUID getId() { return id; }
@@ -75,21 +77,6 @@ public class BusinessService {
     public String getName() { return name; }
     public Duration getDuration() { return duration; }
     public List<ServiceRequirement> getRequirements() { return requirements; }
-
-    /**
-     * Names of the booking inputs this service needs from the user, derived from its
-     * requirements (e.g. a table MERGE line contributes "partySize"). Lets a chatbot
-     * discover which questions to ask, generically, with no per-vertical hardcoding.
-     */
-    public Set<String> requiredInputParameters() {
-        Set<String> params = new HashSet<>();
-        for (ServiceRequirement r : requirements) {
-            if (r.getDemandParameter() != null) {
-                params.add(r.getDemandParameter());
-            }
-        }
-        return params;
-    }
 
     @Override
     public boolean equals(Object o) {

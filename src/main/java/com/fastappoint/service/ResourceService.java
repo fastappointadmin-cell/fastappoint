@@ -1,29 +1,30 @@
 package com.fastappoint.service;
 
 import com.fastappoint.domain.Business;
-import com.fastappoint.domain.Capability;
+import com.fastappoint.domain.ResourceAttributeDefinition;
+import com.fastappoint.domain.ResourceAttributeValue;
 import com.fastappoint.domain.Resource;
 import com.fastappoint.domain.ResourceAvailability;
 import com.fastappoint.domain.ResourceType;
-import com.fastappoint.dto.CapabilityRefDTO;
 import com.fastappoint.dto.CreateResourceRequest;
+import com.fastappoint.dto.ResourceAttributeValueDTO;
+import com.fastappoint.dto.ResourceAttributeValueInput;
 import com.fastappoint.dto.ResourceAvailabilityDTO;
 import com.fastappoint.dto.ResourceDTO;
+import com.fastappoint.dto.UpdateResourceRequest;
 import com.fastappoint.exception.BusinessNotFoundException;
 import com.fastappoint.exception.InvalidAppointmentException;
 import com.fastappoint.exception.ResourceNotFoundException;
 import com.fastappoint.repository.BusinessRepository;
-import com.fastappoint.repository.CapabilityRepository;
 import com.fastappoint.repository.ResourceRepository;
 import com.fastappoint.repository.ResourceTypeRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,18 +34,16 @@ public class ResourceService {
 
     private final ResourceRepository resourceRepository;
     private final BusinessRepository businessRepository;
-    private final CapabilityRepository capabilityRepository;
     private final ResourceTypeRepository resourceTypeRepository;
 
     public ResourceService(ResourceRepository resourceRepository, BusinessRepository businessRepository,
-                          CapabilityRepository capabilityRepository,
                           ResourceTypeRepository resourceTypeRepository) {
         this.resourceRepository = resourceRepository;
         this.businessRepository = businessRepository;
-        this.capabilityRepository = capabilityRepository;
         this.resourceTypeRepository = resourceTypeRepository;
     }
 
+    @Transactional
     public ResourceDTO createResource(UUID businessId, CreateResourceRequest request) {
         if (request.getName() == null || request.getName().trim().isEmpty()) {
             throw new InvalidAppointmentException("Resource name cannot be empty");
@@ -69,11 +68,8 @@ public class ResourceService {
         if (request.getCapacity() != null) {
             resource.withCapacity(request.getCapacity());
         }
-        
-        Set<Capability> capabilities = resolveCapabilities(request.getCapabilityIds());
-        for (Capability capability : capabilities) {
-            resource.addCapability(capability);
-        }
+        resource.withMergeGroup(normalizeMergeGroup(request.getMergeGroup()));
+        applyAttributeValues(resource, resourceType, request.getAttributeValues());
 
         // Persist through aggregate root so a newly inferred ResourceType is inserted
         // before Resource references it.
@@ -107,9 +103,17 @@ public class ResourceService {
                 .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + id));
     }
 
-    public ResourceAvailabilityDTO addAvailabilityWindow(UUID resourceId, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
-        if (dayOfWeek == null) {
-            throw new InvalidAppointmentException("Day of week is required");
+    @Transactional(readOnly = true)
+    public List<ResourceAvailabilityDTO> getResourceAvailabilityByResourceId(UUID id) {
+        return this.resourceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Resource not found with ID: " + id)).getAvailability()
+                .stream().map(this::convertAvailabilityToDTO).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public ResourceAvailabilityDTO addAvailabilityWindow(UUID resourceId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+        if (date == null) {
+            throw new InvalidAppointmentException("Date is required");
         }
         if (startTime == null || endTime == null) {
             throw new InvalidAppointmentException("Start time and end time are required");
@@ -119,34 +123,110 @@ public class ResourceService {
         }
 
         Resource resource = getResourceEntityById(resourceId);
-        ResourceAvailability availability = resource.addAvailability(dayOfWeek, startTime, endTime);
+        ResourceAvailability availability = resource.addAvailability(date, startTime, endTime);
         resourceRepository.save(resource);
         return convertAvailabilityToDTO(availability);
     }
 
+    @Transactional
+    public ResourceAvailabilityDTO updateAvailabilityWindow(
+            UUID resourceId, UUID availabilityId, LocalDate date, LocalTime startTime, LocalTime endTime) {
+        if (date == null) {
+            throw new InvalidAppointmentException("Date is required");
+        }
+        if (startTime == null || endTime == null) {
+            throw new InvalidAppointmentException("Start time and end time are required");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new InvalidAppointmentException("End time must be after start time");
+        }
+
+        Resource resource = getResourceEntityById(resourceId);
+        ResourceAvailability availability = resource.getAvailability().stream()
+                .filter(existing -> existing.getId().equals(availabilityId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Availability window not found with ID: " + availabilityId));
+
+        availability.setDate(date);
+        availability.setStartTime(startTime);
+        availability.setEndTime(endTime);
+        resourceRepository.save(resource);
+        return convertAvailabilityToDTO(availability);
+    }
+
+    @Transactional
+    public void deleteAvailabilityWindow(UUID resourceId, UUID availabilityId) {
+        Resource resource = getResourceEntityById(resourceId);
+        ResourceAvailability availability = resource.getAvailability().stream()
+                .filter(existing -> existing.getId().equals(availabilityId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Availability window not found with ID: " + availabilityId));
+
+        resource.getAvailability().remove(availability);
+        resourceRepository.save(resource);
+    }
+
+
+    @Transactional
+    public ResourceDTO updateResource(UUID id, UpdateResourceRequest request) {
+        Resource resource = getResourceEntityById(id);
+
+        if (request.getName() != null) {
+            String normalizedName = request.getName().trim();
+            if (normalizedName.isEmpty()) {
+                throw new InvalidAppointmentException("Resource name cannot be empty");
+            }
+            resource.rename(normalizedName);
+        }
+
+        if (request.getTypeId() != null) {
+            ResourceType resourceType = resourceTypeRepository.findById(request.getTypeId())
+                    .orElseThrow(() -> new InvalidAppointmentException("Resource type not found with ID: " + request.getTypeId()));
+            if (!resourceType.getBusiness().getId().equals(resource.getBusiness().getId())) {
+                throw new InvalidAppointmentException("Resource type does not belong to this business");
+            }
+            resource.changeType(resourceType);
+            if (request.getAttributeValues() == null) {
+                resource.clearAttributeValues();
+            }
+        }
+
+        if (request.getCapacity() != null && request.getCapacity() <= 0) {
+            throw new InvalidAppointmentException("Capacity must be positive when provided");
+        }
+        resource.withCapacity(request.getCapacity());
+        resource.withMergeGroup(normalizeMergeGroup(request.getMergeGroup()));
+        if (request.getAttributeValues() != null) {
+            applyAttributeValues(resource, resource.getType(), request.getAttributeValues());
+        }
+
+        Resource updated = resourceRepository.save(resource);
+        return convertToDTO(updated);
+    }
+
+    @Transactional
     public void deleteResource(UUID id) {
         resourceRepository.delete(getResourceEntityById(id));
     }
 
 
-    private Set<Capability> resolveCapabilities(Set<UUID> capabilityIds) {
-        Set<Capability> resolved = new HashSet<>();
-        if (capabilityIds == null) {
-            return resolved;
-        }
-        for (UUID capabilityId : capabilityIds) {
-            Capability capability = capabilityRepository.findById(capabilityId)
-                    .orElseThrow(() -> new InvalidAppointmentException("Capability not found with ID: " + capabilityId));
-            resolved.add(capability);
-        }
-        return resolved;
-    }
-
     private ResourceDTO convertToDTO(Resource resource) {
-        Set<CapabilityRefDTO> capabilityRefs = resource.getCapabilities().stream()
-                .map(cap -> new CapabilityRefDTO(cap.getId(), cap.getName()))
-                .collect(Collectors.toSet());
-
+        List<ResourceAttributeValueDTO> attributeValues = resource.getType().getAttributeDefinitions().stream()
+                .map(definition -> {
+                    ResourceAttributeValue matchingValue = resource.getAttributeValues().stream()
+                            .filter(attributeValue -> attributeValue.getAttributeDefinition().getId().equals(definition.getId()))
+                            .findFirst()
+                            .orElse(null);
+                    return new ResourceAttributeValueDTO(
+                            definition.getId(),
+                            definition.getName(),
+                            definition.getType(),
+                            definition.isRequired(),
+                            List.copyOf(definition.getOptions()),
+                            matchingValue != null ? matchingValue.getValue() : null
+                    );
+                })
+                .collect(Collectors.toList());
         return new ResourceDTO(
                 resource.getId(),
                 resource.getBusiness().getId(),
@@ -154,7 +234,8 @@ public class ResourceService {
                 resource.getName(),
                 resource.getType().getName(),
                 resource.getCapacity(),
-                capabilityRefs
+                resource.getMergeGroup(),
+                attributeValues
         );
     }
 
@@ -162,10 +243,60 @@ public class ResourceService {
         return new ResourceAvailabilityDTO(
                 availability.getId(),
                 availability.getResource().getId(),
-                availability.getDayOfWeek(),
+                availability.getDate(),
                 availability.getStartTime(),
                 availability.getEndTime()
         );
     }
-}
 
+    private void applyAttributeValues(Resource resource, ResourceType resourceType, List<ResourceAttributeValueInput> inputs) {
+        Map<UUID, ResourceAttributeDefinition> definitionsById = resourceType.getAttributeDefinitions().stream()
+                .collect(Collectors.toMap(ResourceAttributeDefinition::getId, definition -> definition));
+        Map<UUID, String> normalizedValuesByDefinitionId = new java.util.LinkedHashMap<>();
+
+        for (ResourceAttributeValueInput input : inputs == null ? List.<ResourceAttributeValueInput>of() : inputs) {
+            if (input.getAttributeDefinitionId() == null) {
+                throw new InvalidAppointmentException("Attribute definition is required");
+            }
+            ResourceAttributeDefinition definition = definitionsById.get(input.getAttributeDefinitionId());
+            if (definition == null) {
+                throw new InvalidAppointmentException("Attribute does not belong to the selected resource type: " + input.getAttributeDefinitionId());
+            }
+            if (normalizedValuesByDefinitionId.containsKey(definition.getId())) {
+                throw new InvalidAppointmentException("Attribute values must be unique per definition");
+            }
+
+            String normalizedValue = ResourceAttributeValidation.normalizeStoredValue(
+                    definition,
+                    input.getValue(),
+                    definition.isRequired(),
+                    "Attribute \"" + definition.getName() + "\""
+            );
+            if (normalizedValue != null) {
+                normalizedValuesByDefinitionId.put(definition.getId(), normalizedValue);
+            }
+        }
+
+        for (ResourceAttributeDefinition definition : definitionsById.values()) {
+            if (definition.isRequired() && !normalizedValuesByDefinitionId.containsKey(definition.getId())) {
+                throw new InvalidAppointmentException("Attribute \"" + definition.getName() + "\" is required");
+            }
+        }
+
+        resource.clearAttributeValues();
+        for (ResourceAttributeDefinition definition : resourceType.getAttributeDefinitions()) {
+            String normalizedValue = normalizedValuesByDefinitionId.get(definition.getId());
+            if (normalizedValue != null) {
+                resource.setAttributeValue(definition, normalizedValue);
+            }
+        }
+    }
+
+    private String normalizeMergeGroup(String mergeGroup) {
+        if (mergeGroup == null) {
+            return null;
+        }
+        String normalized = mergeGroup.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+}

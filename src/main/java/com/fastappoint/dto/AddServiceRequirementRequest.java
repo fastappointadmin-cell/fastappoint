@@ -1,34 +1,28 @@
 package com.fastappoint.dto;
 
+import com.fastappoint.domain.ServiceRequirementFulfillmentMode;
+
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 
 public class AddServiceRequirementRequest {
-    private List<UUID> resourceTypeIds;
-    private String allocationMode;
+    private UUID resourceTypeId;
     private Integer quantity;
-    private String demandParameter;
-    private Set<UUID> requiredCapabilityIds;
-    private Long occupationDurationSeconds;
+    private ServiceRequirementFulfillmentMode fulfillmentMode;
+    private Integer requiredCapacity;
+    private String capacityInputKey;
+    private List<ServiceRequirementConstraintInput> constraints;
+
 
     public AddServiceRequirementRequest() {
     }
 
-    public List<UUID> getResourceTypeIds() {
-        return resourceTypeIds;
+    public UUID getResourceTypeId() {
+        return resourceTypeId;
     }
 
-    public void setResourceTypeIds(List<UUID> resourceTypeIds) {
-        this.resourceTypeIds = resourceTypeIds;
-    }
-
-    public String getAllocationMode() {
-        return allocationMode;
-    }
-
-    public void setAllocationMode(String allocationMode) {
-        this.allocationMode = allocationMode;
+    public void setResourceTypeId(UUID resourceTypeId) {
+        this.resourceTypeId = resourceTypeId;
     }
 
     public Integer getQuantity() {
@@ -39,28 +33,36 @@ public class AddServiceRequirementRequest {
         this.quantity = quantity;
     }
 
-    public String getDemandParameter() {
-        return demandParameter;
+    public ServiceRequirementFulfillmentMode getFulfillmentMode() {
+        return fulfillmentMode;
     }
 
-    public void setDemandParameter(String demandParameter) {
-        this.demandParameter = demandParameter;
+    public void setFulfillmentMode(ServiceRequirementFulfillmentMode fulfillmentMode) {
+        this.fulfillmentMode = fulfillmentMode;
     }
 
-    public Set<UUID> getRequiredCapabilityIds() {
-        return requiredCapabilityIds;
+    public Integer getRequiredCapacity() {
+        return requiredCapacity;
     }
 
-    public void setRequiredCapabilityIds(Set<UUID> requiredCapabilityIds) {
-        this.requiredCapabilityIds = requiredCapabilityIds;
+    public void setRequiredCapacity(Integer requiredCapacity) {
+        this.requiredCapacity = requiredCapacity;
     }
 
-    public Long getOccupationDurationSeconds() {
-        return occupationDurationSeconds;
+    public String getCapacityInputKey() {
+        return capacityInputKey;
     }
 
-    public void setOccupationDurationSeconds(Long occupationDurationSeconds) {
-        this.occupationDurationSeconds = occupationDurationSeconds;
+    public void setCapacityInputKey(String capacityInputKey) {
+        this.capacityInputKey = capacityInputKey;
     }
+
+    public List<ServiceRequirementConstraintInput> getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(List<ServiceRequirementConstraintInput> constraints) {
+        this.constraints = constraints;
+    }
+
 }
-

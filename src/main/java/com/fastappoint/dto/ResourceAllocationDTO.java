@@ -7,22 +7,25 @@ public class ResourceAllocationDTO {
     private UUID id;
     private UUID appointmentId;
     private UUID resourceId;
-    private UUID requirementId;
+    private String resourceName;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
 
     public ResourceAllocationDTO() {
     }
 
-    public ResourceAllocationDTO(UUID id, UUID appointmentId, UUID resourceId, UUID requirementId,
+    public ResourceAllocationDTO(UUID id, UUID appointmentId, UUID resourceId, String resourceName,
                                  LocalDateTime startTime, LocalDateTime endTime) {
         this.id = id;
         this.appointmentId = appointmentId;
         this.resourceId = resourceId;
-        this.requirementId = requirementId;
+        this.resourceName = resourceName;
         this.startTime = startTime;
         this.endTime = endTime;
     }
+
+    public String getResourceName() { return resourceName; }
+    public void setResourceName(String resourceName) { this.resourceName = resourceName; }
 
     public UUID getId() {
         return id;
@@ -46,14 +49,6 @@ public class ResourceAllocationDTO {
 
     public void setResourceId(UUID resourceId) {
         this.resourceId = resourceId;
-    }
-
-    public UUID getRequirementId() {
-        return requirementId;
-    }
-
-    public void setRequirementId(UUID requirementId) {
-        this.requirementId = requirementId;
     }
 
     public LocalDateTime getStartTime() {

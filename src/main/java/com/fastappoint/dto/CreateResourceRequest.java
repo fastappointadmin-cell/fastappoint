@@ -1,13 +1,14 @@
 package com.fastappoint.dto;
 
-import java.util.Set;
+import java.util.List;
 import java.util.UUID;
 
 public class CreateResourceRequest {
     private String name;
     private UUID typeId;
     private Integer capacity;
-    private Set<UUID> capabilityIds;
+    private String mergeGroup;
+    private List<ResourceAttributeValueInput> attributeValues;
 
     public CreateResourceRequest() {
     }
@@ -36,12 +37,19 @@ public class CreateResourceRequest {
         this.capacity = capacity;
     }
 
-    public Set<UUID> getCapabilityIds() {
-        return capabilityIds;
+    public String getMergeGroup() {
+        return mergeGroup;
     }
 
-    public void setCapabilityIds(Set<UUID> capabilityIds) {
-        this.capabilityIds = capabilityIds;
+    public void setMergeGroup(String mergeGroup) {
+        this.mergeGroup = mergeGroup;
+    }
+
+    public List<ResourceAttributeValueInput> getAttributeValues() {
+        return attributeValues;
+    }
+
+    public void setAttributeValues(List<ResourceAttributeValueInput> attributeValues) {
+        this.attributeValues = attributeValues;
     }
 }
-

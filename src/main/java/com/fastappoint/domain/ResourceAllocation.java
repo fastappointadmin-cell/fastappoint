@@ -27,10 +27,6 @@ public class ResourceAllocation {
     @JoinColumn(name = "resource_id", nullable = false)
     private Resource resource;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "requirement_id", nullable = false)
-    private ServiceRequirement requirement;
-
     @Column(name = "start_time", nullable = false)
     private LocalDateTime startTime;
 
@@ -40,12 +36,11 @@ public class ResourceAllocation {
     protected ResourceAllocation() { // required by Hibernate
     }
 
-    ResourceAllocation(Appointment appointment, Resource resource, ServiceRequirement requirement,
+    ResourceAllocation(Appointment appointment, Resource resource,
                        LocalDateTime startTime, LocalDateTime endTime) {
         this.id = UUID.randomUUID();
         this.appointment = appointment;
         this.resource = resource;
-        this.requirement = requirement;
         this.startTime = startTime;
         this.endTime = endTime;
     }
@@ -53,9 +48,11 @@ public class ResourceAllocation {
     public UUID getId() { return id; }
     public Appointment getAppointment() { return appointment; }
     public Resource getResource() { return resource; }
-    public ServiceRequirement getRequirement() { return requirement; }
     public LocalDateTime getStartTime() { return startTime; }
     public LocalDateTime getEndTime() { return endTime; }
+
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
 
     @Override
     public boolean equals(Object o) {

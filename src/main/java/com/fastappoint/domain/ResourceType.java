@@ -2,6 +2,8 @@ package com.fastappoint.domain;
 
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -31,6 +33,9 @@ public class ResourceType {
     @Column(nullable = false)
     private String name;
 
+    @OneToMany(mappedBy = "resourceType", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResourceAttributeDefinition> attributeDefinitions = new ArrayList<>();
+
     protected ResourceType() { // required by Hibernate
     }
 
@@ -40,15 +45,42 @@ public class ResourceType {
         this.name = name;
     }
 
+    public void rename(String name) {
+        this.name = name;
+    }
+
+    public ResourceAttributeDefinition addAttributeDefinition(
+            String name,
+            ResourceAttributeType type,
+            boolean required,
+            List<String> options
+    ) {
+        ResourceAttributeDefinition attributeDefinition = new ResourceAttributeDefinition(this, name, type, required);
+        attributeDefinition.replaceOptions(options);
+        attributeDefinitions.add(attributeDefinition);
+        return attributeDefinition;
+    }
+
+    public java.util.Optional<ResourceAttributeDefinition> findAttributeDefinition(UUID attributeDefinitionId) {
+        return attributeDefinitions.stream()
+                .filter(attributeDefinition -> attributeDefinition.getId().equals(attributeDefinitionId))
+                .findFirst();
+    }
+
+    public boolean removeAttributeDefinition(UUID attributeDefinitionId) {
+        return attributeDefinitions.removeIf(attributeDefinition -> attributeDefinition.getId().equals(attributeDefinitionId));
+    }
+
     public UUID getId() { return id; }
     public Business getBusiness() { return business; }
     public String getName() { return name; }
+    public List<ResourceAttributeDefinition> getAttributeDefinitions() { return attributeDefinitions; }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (!(o instanceof ResourceType other)) return false;
-        return id != null && id.equals(other.id);
+        return id != null && id.equals(other.getId());
     }
 
     @Override

@@ -2,14 +2,53 @@ spring:
   application:
     name: fastappoint
   datasource:
-    url: jdbc:postgresql://localhost:5433/fastappoint
-    username: postgres
-    password: parola123
+    # Local default; on Railway, PGHOST/PGPORT/PGDATABASE/PGUSER/PGPASSWORD are injected by the PostgreSQL addon.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5433}/${PGDATABASE:fastappoint}}
+    username: ${PGUSER:postgres}
+    password: ${PGPASSWORD:parola123}
   jpa:
     hibernate:
-      ddl-auto: create
-    show-sql: true
+      ddl-auto: update
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+  security:
+    oauth2:
+      client:
+        registration:
+          # Placeholders -- register real apps with Google/Meta and replace these (env vars in real deployments,
+          # never commit real secrets). Both "google" and "facebook" are well-known providers to Spring Security,
+          # so no separate provider block (authorization/token/user-info URIs) is needed.
+          google:
+            client-id: REPLACE_WITH_GOOGLE_CLIENT_ID
+            client-secret: REPLACE_WITH_GOOGLE_CLIENT_SECRET
+            scope: openid,profile,email
+          facebook:
+            client-id: REPLACE_WITH_FACEBOOK_APP_ID
+            client-secret: REPLACE_WITH_FACEBOOK_APP_SECRET
+            scope: public_profile,email
 
 app:
   cors:
-    allowed-origin: http://localhost:4200
+    # In production set APP_CORS_ALLOWED_ORIGINS to your Railway frontend URL (e.g. https://fastappoint-web.up.railway.app).
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://127.0.0.1:4200}
+    allowed-origin: ${APP_CORS_ALLOWED_ORIGIN:http://localhost:4200}
+  frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:4200}
+  chat:
+    llm:
+      enabled: ${APP_CHAT_LLM_ENABLED:false}
+      api-url: ${APP_CHAT_LLM_API_URL:https://api.groq.com/openai/v1/chat/completions}
+      api-key: ${APP_CHAT_LLM_API_KEY:}
+      model: ${APP_CHAT_LLM_MODEL:llama-3.3-70b-versatile}
+    rate-limit:
+      max-requests: ${APP_CHAT_RATE_LIMIT_MAX_REQUESTS:20}
+      window-seconds: ${APP_CHAT_RATE_LIMIT_WINDOW_SECONDS:60}
+  jwt:
+    # Placeholder -- override via APP_JWT_SECRET env var in real deployments, never commit a real secret.
+    secret: ${APP_JWT_SECRET:REPLACE_WITH_A_LONG_RANDOM_SECRET_CHANGE_ME_1234567890}
+    access-token-ttl-minutes: 15
+    refresh-token-ttl-days: 30
+  cookie:
+    # false locally: the Angular dev server proxies /api to this backend (see proxy.conf.json in the
+    # frontend repo), so the browser sees everything as same-origin over plain http -- Secure would
+    # require HTTPS and get silently dropped, and SameSite=None requires Secure. Same-origin + Lax needs
+    # neither. MUST be true (via APP_COOKIE_SECURE=true) in any real deployment served over HTTPS.
+    secure: ${APP_COOKIE_SECURE:false}

@@ -1,33 +1,36 @@
 package com.fastappoint.dto;
 
-import java.time.Duration;
-import java.util.Set;
+import com.fastappoint.domain.ServiceRequirementFulfillmentMode;
+
 import java.util.UUID;
 
 public class ServiceRequirementDTO {
     private UUID id;
     private UUID serviceId;
+    private UUID resourceTypeId;
     private String resourceTypeName;
-    private String allocationMode;
     private Integer quantity;
-    private String demandParameter;
-    private Set<CapabilityRefDTO> requiredCapabilities;
-    private Long occupationDurationSeconds;
+    private ServiceRequirementFulfillmentMode fulfillmentMode;
+    private Integer requiredCapacity;
+    private String capacityInputKey;
+    private java.util.List<ServiceRequirementConstraintDTO> constraints;
 
     public ServiceRequirementDTO() {
     }
 
-    public ServiceRequirementDTO(UUID id, UUID serviceId, String resourceTypeName, String allocationMode,
-                                 Integer quantity, String demandParameter, Set<CapabilityRefDTO> requiredCapabilities,
-                                 Duration occupationDuration) {
+    public ServiceRequirementDTO(UUID id, UUID serviceId, UUID resourceTypeId, String resourceTypeName,
+                                 Integer quantity, ServiceRequirementFulfillmentMode fulfillmentMode,
+                                 Integer requiredCapacity, String capacityInputKey,
+                                 java.util.List<ServiceRequirementConstraintDTO> constraints) {
         this.id = id;
         this.serviceId = serviceId;
+        this.resourceTypeId = resourceTypeId;
         this.resourceTypeName = resourceTypeName;
-        this.allocationMode = allocationMode;
         this.quantity = quantity;
-        this.demandParameter = demandParameter;
-        this.requiredCapabilities = requiredCapabilities;
-        this.occupationDurationSeconds = occupationDuration != null ? occupationDuration.getSeconds() : null;
+        this.fulfillmentMode = fulfillmentMode;
+        this.requiredCapacity = requiredCapacity;
+        this.capacityInputKey = capacityInputKey;
+        this.constraints = constraints;
     }
 
     public UUID getId() {
@@ -46,20 +49,20 @@ public class ServiceRequirementDTO {
         this.serviceId = serviceId;
     }
 
+    public UUID getResourceTypeId() {
+        return resourceTypeId;
+    }
+
+    public void setResourceTypeId(UUID resourceTypeId) {
+        this.resourceTypeId = resourceTypeId;
+    }
+
     public String getResourceTypeName() {
         return resourceTypeName;
     }
 
     public void setResourceTypeName(String resourceTypeName) {
         this.resourceTypeName = resourceTypeName;
-    }
-
-    public String getAllocationMode() {
-        return allocationMode;
-    }
-
-    public void setAllocationMode(String allocationMode) {
-        this.allocationMode = allocationMode;
     }
 
     public Integer getQuantity() {
@@ -70,28 +73,36 @@ public class ServiceRequirementDTO {
         this.quantity = quantity;
     }
 
-    public String getDemandParameter() {
-        return demandParameter;
+    public ServiceRequirementFulfillmentMode getFulfillmentMode() {
+        return fulfillmentMode;
     }
 
-    public void setDemandParameter(String demandParameter) {
-        this.demandParameter = demandParameter;
+    public void setFulfillmentMode(ServiceRequirementFulfillmentMode fulfillmentMode) {
+        this.fulfillmentMode = fulfillmentMode;
     }
 
-    public Set<CapabilityRefDTO> getRequiredCapabilities() {
-        return requiredCapabilities;
+    public Integer getRequiredCapacity() {
+        return requiredCapacity;
     }
 
-    public void setRequiredCapabilities(Set<CapabilityRefDTO> requiredCapabilities) {
-        this.requiredCapabilities = requiredCapabilities;
+    public void setRequiredCapacity(Integer requiredCapacity) {
+        this.requiredCapacity = requiredCapacity;
     }
 
-    public Long getOccupationDurationSeconds() {
-        return occupationDurationSeconds;
+    public String getCapacityInputKey() {
+        return capacityInputKey;
     }
 
-    public void setOccupationDurationSeconds(Long occupationDurationSeconds) {
-        this.occupationDurationSeconds = occupationDurationSeconds;
+    public void setCapacityInputKey(String capacityInputKey) {
+        this.capacityInputKey = capacityInputKey;
     }
+
+    public java.util.List<ServiceRequirementConstraintDTO> getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(java.util.List<ServiceRequirementConstraintDTO> constraints) {
+        this.constraints = constraints;
+    }
+
 }
-

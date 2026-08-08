@@ -2,6 +2,7 @@ package com.fastappoint.domain;
 
 import jakarta.persistence.*;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +26,8 @@ public class Appointment {
     @JoinColumn(name = "business_id", nullable = false)
     private Business business;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "service_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id")
     private BusinessService businessService;
 
     @Column(name = "start_time", nullable = false)
@@ -39,8 +40,13 @@ public class Appointment {
     @Column(nullable = false, length = 16)
     private AppointmentStatus status;
 
-    @Embedded
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
+
+    /** Free-text label for a manual (service-less) booking. Null for service bookings. */
+    @Column(name = "manual_label")
+    private String manualLabel;
 
     @OneToMany(mappedBy = "appointment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ResourceAllocation> allocations = new ArrayList<>();
@@ -59,12 +65,54 @@ public class Appointment {
         this.status = AppointmentStatus.PENDING;
     }
 
-    /** Bind a concrete resource to a requirement line over an occupied interval. */
-    public ResourceAllocation allocate(Resource resource, ServiceRequirement requirement,
-                                       LocalDateTime start, LocalDateTime end) {
-        ResourceAllocation allocation = new ResourceAllocation(this, resource, requirement, start, end);
+    /** Manual booking: not tied to any BusinessService, resources are assigned directly (not via the solver). */
+    public Appointment(Business business, LocalDateTime startTime, LocalDateTime endTime,
+                       Customer customer, String manualLabel) {
+        this.id = UUID.randomUUID();
+        this.business = business;
+        this.businessService = null;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.customer = customer;
+        this.manualLabel = manualLabel;
+        this.status = AppointmentStatus.CONFIRMED;
+    }
+
+    /**
+     * Manual booking that's still tagged with a BusinessService: resources and the exact interval are assigned
+     * directly (not via the solver), same as the fully manual constructor, but the service is kept for
+     * reporting/reference -- lets a caller override the service's own duration with a custom interval.
+     */
+    public Appointment(Business business, BusinessService businessService, LocalDateTime startTime, LocalDateTime endTime,
+                       Customer customer, String manualLabel) {
+        this.id = UUID.randomUUID();
+        this.business = business;
+        this.businessService = businessService;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.customer = customer;
+        this.manualLabel = manualLabel;
+        this.status = AppointmentStatus.CONFIRMED;
+    }
+
+    /** Bind a concrete resource to this appointment over an occupied interval. */
+    public ResourceAllocation allocate(Resource resource, LocalDateTime start, LocalDateTime end) {
+        ResourceAllocation allocation = new ResourceAllocation(this, resource, start, end);
         allocations.add(allocation);
         return allocation;
+    }
+
+    /** Moves the appointment to a new start/end, translating every allocation by the same start delta. */
+    public void reschedule(LocalDateTime newStart, LocalDateTime newEnd) {
+        Duration deltaStart = Duration.between(startTime, newStart);
+        for (ResourceAllocation allocation : allocations) {
+            Duration ownDuration = Duration.between(allocation.getStartTime(), allocation.getEndTime());
+            LocalDateTime shiftedStart = allocation.getStartTime().plus(deltaStart);
+            allocation.setStartTime(shiftedStart);
+            allocation.setEndTime(shiftedStart.plus(ownDuration));
+        }
+        this.startTime = newStart;
+        this.endTime = newEnd;
     }
 
     public void confirm() { this.status = AppointmentStatus.CONFIRMED; }
@@ -78,6 +126,7 @@ public class Appointment {
     public LocalDateTime getEndTime() { return endTime; }
     public AppointmentStatus getStatus() { return status; }
     public Customer getCustomer() { return customer; }
+    public String getManualLabel() { return manualLabel; }
     public List<ResourceAllocation> getAllocations() { return allocations; }
 
     @Override

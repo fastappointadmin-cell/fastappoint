@@ -1,7 +1,5 @@
 package com.fastappoint.domain;
 
-import com.fastappoint.core.AllocationMode;
-import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -9,28 +7,25 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
-import java.time.Duration;
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.UUID;
 
 /**
- * One line in a service's resource needs. This is the universal booking primitive:
- * "I need {mode} resources of {resourceType} that also have {requiredCapabilities},
- *  occupying {occupationDuration} of the appointment."
+ * One resource line in a service's requirements.
  *
- * The predicate a resource must satisfy = resourceType + requiredCapabilities
- *   (+ capacity, interpreted by MERGE).
- * The quantity rule = mode + (quantity | demandParameter).
- *   - SINGLE / MULTIPLE : quantity is a fixed count of distinct resources.
- *   - MERGE             : demand = quantity (fixed) OR the runtime value named by
- *                         demandParameter; satisfied when summed capacity >= demand.
+ * Mandatory fields:
+ *   - resourceType  : the type of resource needed
+ *   - quantity      : how many resources of this type are needed (default 1)
+ *
+ * Advanced (optional) fields:
+ *   - label             : human-readable label for this line (e.g. "senior barber", "shampoo station")
+ *   - notes             : free-text notes about this requirement
  */
 @Entity
 @Table(name = "service_requirement")
@@ -43,85 +38,110 @@ public class ServiceRequirement {
     @JoinColumn(name = "service_id", nullable = false)
     private BusinessService businessService;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "resource_type_id", nullable = false)
     private ResourceType resourceType;
 
-    /** Extra predicate: a matching resource must have ALL of these capabilities. */
-    @ManyToMany
-    @JoinTable(
-            name = "requirement_capability",
-            joinColumns = @JoinColumn(name = "requirement_id"),
-            inverseJoinColumns = @JoinColumn(name = "capability_id")
-    )
-    private Set<Capability> requiredCapabilities = new HashSet<>();
+    /** How many resources of this type are needed. Must be >= 1. */
+    @Column(nullable = false)
+    private int quantity = 1;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 16)
-    private AllocationMode mode;
+    @Column(name = "fulfillment_mode", length = 24)
+    private ServiceRequirementFulfillmentMode fulfillmentMode = ServiceRequirementFulfillmentMode.QUANTITY;
 
-    /** Fixed count (SINGLE/MULTIPLE) or fixed demand (MERGE). null when demand is dynamic. */
-    @Column
-    private Integer quantity;
+    @Column(name = "required_capacity")
+    private Integer requiredCapacity;
 
-    /** If set, the demand for this line is read from this booking input at reservation time. */
-    @Column(name = "demand_parameter")
-    private String demandParameter;
+    @Column(name = "capacity_input_key", length = 120)
+    private String capacityInputKey;
 
-    /**
-     * How long this resource is tied up, measured from appointment start.
-     * null => occupies the full service duration.
-     * (Lets a mechanic occupy 2h while the ramp occupies the whole slot.)
-     */
-    @Column(name = "occupation_duration")
-    private Duration occupationDuration;
+    // --- Advanced / optional ---
+
+    /** Human-readable label for this requirement line. */
+    @Column(length = 255)
+    private String label;
+
+    /** Free-text notes about this requirement. */
+    @Column(length = 1000)
+    private String notes;
+
+    @OneToMany(mappedBy = "serviceRequirement", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    private List<ServiceRequirementConstraint> constraints = new ArrayList<>();
 
     protected ServiceRequirement() { // required by Hibernate
     }
 
-    private ServiceRequirement(BusinessService businessService, ResourceType resourceType, AllocationMode mode,
-                               Integer quantity, String demandParameter) {
+    ServiceRequirement(BusinessService businessService, ResourceType resourceType, int quantity) {
         this.id = UUID.randomUUID();
         this.businessService = businessService;
         this.resourceType = resourceType;
-        this.mode = mode;
         this.quantity = quantity;
-        this.demandParameter = demandParameter;
     }
 
-    static ServiceRequirement fixed(BusinessService businessService, ResourceType type, AllocationMode mode, int quantity) {
-        return new ServiceRequirement(businessService, type, mode, quantity, null);
-    }
+    // --- fluent advanced configuration ---
 
-    static ServiceRequirement merged(BusinessService businessService, ResourceType type, String demandParameter) {
-        return new ServiceRequirement(businessService, type, AllocationMode.MERGE, null, demandParameter);
-    }
-
-    public ServiceRequirement withCapability(Capability capability) {
-        this.requiredCapabilities.add(capability);
+    public ServiceRequirement withLabel(String label) {
+        this.label = label;
         return this;
     }
 
-    public ServiceRequirement removeCapability(Capability capability) {
-        this.requiredCapabilities.remove(capability);
+    public ServiceRequirement withNotes(String notes) {
+        this.notes = notes;
         return this;
     }
 
-    public ServiceRequirement withOccupationDuration(Duration occupationDuration) {
-        this.occupationDuration = occupationDuration;
-        return this;
+    public void changeResourceType(ResourceType resourceType) {
+        this.resourceType = resourceType;
     }
 
-    public boolean hasDynamicDemand() { return demandParameter != null; }
+    public void changeQuantity(int quantity) {
+        this.quantity = quantity;
+    }
+
+    public void configureQuantityMode(int quantity) {
+        this.fulfillmentMode = ServiceRequirementFulfillmentMode.QUANTITY;
+        this.quantity = quantity;
+        this.requiredCapacity = null;
+        this.capacityInputKey = null;
+    }
+
+    public void configureCapacityMode(Integer requiredCapacity, String capacityInputKey) {
+        this.fulfillmentMode = ServiceRequirementFulfillmentMode.CAPACITY;
+        this.quantity = 1;
+        this.requiredCapacity = requiredCapacity;
+        this.capacityInputKey = capacityInputKey;
+    }
+
+    public ServiceRequirementConstraint addConstraint(
+            ResourceAttributeDefinition attributeDefinition,
+            ServiceRequirementConstraintOperator operator,
+            String expectedValue
+    ) {
+        ServiceRequirementConstraint constraint =
+                new ServiceRequirementConstraint(this, attributeDefinition, operator, expectedValue);
+        constraints.add(constraint);
+        return constraint;
+    }
+
+    public void clearConstraints() {
+        constraints.clear();
+    }
+
+    // --- accessors ---
 
     public UUID getId() { return id; }
     public BusinessService getService() { return businessService; }
     public ResourceType getResourceType() { return resourceType; }
-    public Set<Capability> getRequiredCapabilities() { return requiredCapabilities; }
-    public AllocationMode getMode() { return mode; }
-    public Integer getQuantity() { return quantity; }
-    public String getDemandParameter() { return demandParameter; }
-    public Duration getOccupationDuration() { return occupationDuration; }
+    public int getQuantity() { return quantity; }
+    public ServiceRequirementFulfillmentMode getFulfillmentMode() {
+        return fulfillmentMode == null ? ServiceRequirementFulfillmentMode.QUANTITY : fulfillmentMode;
+    }
+    public Integer getRequiredCapacity() { return requiredCapacity; }
+    public String getCapacityInputKey() { return capacityInputKey; }
+    public String getLabel() { return label; }
+    public String getNotes() { return notes; }
+    public List<ServiceRequirementConstraint> getConstraints() { return constraints; }
 
     @Override
     public boolean equals(Object o) {

@@ -2,15 +2,16 @@ package com.fastappoint.domain;
 
 import jakarta.persistence.*;
 
-import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * A recurring weekly window during which a resource offers itself.
- * Wall-clock (business-local) times. A resource with no windows is never bookable.
- * Multiple windows per day are allowed (e.g. 09:00-13:00 and 16:00-20:00).
+ * A specific-date availability window for a resource.
+ * E.g. "on 2026-07-29 from 09:00 to 17:00".
+ * Multiple windows on the same date are allowed (e.g. split shifts).
+ * A resource with no windows for a given date is not bookable on that date.
  */
 @Entity
 @Table(name = "resource_availability")
@@ -23,9 +24,8 @@ public class ResourceAvailability {
     @JoinColumn(name = "resource_id", nullable = false)
     private Resource resource;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "day_of_week", nullable = false, length = 16)
-    private DayOfWeek dayOfWeek;
+    @Column(name = "availability_date", nullable = false)
+    private LocalDate date;
 
     @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
@@ -36,17 +36,17 @@ public class ResourceAvailability {
     protected ResourceAvailability() { // required by Hibernate
     }
 
-    ResourceAvailability(Resource resource, DayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+    ResourceAvailability(Resource resource, LocalDate date, LocalTime startTime, LocalTime endTime) {
         this.id = UUID.randomUUID();
         this.resource = resource;
-        this.dayOfWeek = dayOfWeek;
+        this.date = date;
         this.startTime = startTime;
         this.endTime = endTime;
     }
 
     public UUID getId() { return id; }
     public Resource getResource() { return resource; }
-    public DayOfWeek getDayOfWeek() { return dayOfWeek; }
+    public LocalDate getDate() { return date; }
     public LocalTime getStartTime() { return startTime; }
     public LocalTime getEndTime() { return endTime; }
 
@@ -59,4 +59,16 @@ public class ResourceAvailability {
 
     @Override
     public int hashCode() { return Objects.hashCode(getClass()); }
+
+    public void setDate(LocalDate date) {
+        this.date = date;
+    }
+
+    public void setStartTime(LocalTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public void setEndTime(LocalTime endTime) {
+        this.endTime = endTime;
+    }
 }

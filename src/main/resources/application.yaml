@@ -4,13 +4,6 @@ server:
 spring:
   application:
     name: fastappoint
-  mail:
-    properties:
-      mail:
-        smtp:
-          connectiontimeout: ${SPRING_MAIL_SMTP_CONNECTION_TIMEOUT:5000}
-          timeout: ${SPRING_MAIL_SMTP_TIMEOUT:5000}
-          writetimeout: ${SPRING_MAIL_SMTP_WRITE_TIMEOUT:5000}
   datasource:
     # Local default; on Railway, either SPRING_DATASOURCE_URL or the PG* vars from the PostgreSQL addon are used.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:fastappoint}}
@@ -66,3 +59,9 @@ app:
     enabled: ${APP_CONTACT_ENABLED:false}
     recipient-email: ${APP_CONTACT_RECIPIENT_EMAIL:contactfastappoint@gmail.com}
     from-email: ${APP_CONTACT_FROM_EMAIL:no-reply@fastappoint.app}
+    resend:
+      # Sends mail over Resend's HTTPS API instead of raw SMTP -- Railway's network cannot reach
+      # smtp.gmail.com on any port (confirmed with a direct TCP test from inside the container), so
+      # SMTP delivery is a dead end here regardless of Spring/Gmail configuration.
+      api-url: ${APP_CONTACT_RESEND_API_URL:https://api.resend.com/emails}
+      api-key: ${APP_CONTACT_RESEND_API_KEY:}

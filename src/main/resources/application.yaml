@@ -6,7 +6,7 @@ spring:
     name: fastappoint
   datasource:
     # Local default; on Railway, either SPRING_DATASOURCE_URL or the PG* vars from the PostgreSQL addon are used.
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5432}/${PGDATABASE:fastappoint}}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${PGHOST:localhost}:${PGPORT:5433}/${PGDATABASE:fastappoint}}
     username: ${PGUSER:postgres}
     password: ${PGPASSWORD:parola123}
   jpa:
@@ -44,6 +44,24 @@ app:
     rate-limit:
       max-requests: ${APP_CHAT_RATE_LIMIT_MAX_REQUESTS:20}
       window-seconds: ${APP_CHAT_RATE_LIMIT_WINDOW_SECONDS:60}
+  whatsapp:
+    # One shared flag: without real Meta + Twilio credentials neither half of the integration can do
+    # anything real anyway, so `false` (the default everywhere until both accounts exist) makes the
+    # whole connection flow run in simulated mode -- see WhatsAppCloudApiClient/WhatsAppNumberProvider.
+    enabled: ${APP_WHATSAPP_ENABLED:false}
+    number-country: ${APP_WHATSAPP_NUMBER_COUNTRY:RO}
+    # Meta must call the webhook back with this exact value in `hub.verify_token` during setup.
+    webhook-verify-token: ${APP_WHATSAPP_WEBHOOK_VERIFY_TOKEN:REPLACE_WITH_A_RANDOM_VERIFY_TOKEN}
+    meta:
+      base-url: ${APP_WHATSAPP_META_BASE_URL:https://graph.facebook.com/v21.0}
+      # The one WABA + one system-user token for the whole platform -- see class-level docs on
+      # WhatsAppCloudApiClient. Never a per-business credential.
+      waba-id: ${APP_WHATSAPP_META_WABA_ID:}
+      access-token: ${APP_WHATSAPP_META_ACCESS_TOKEN:}
+    twilio:
+      base-url: ${APP_WHATSAPP_TWILIO_BASE_URL:https://api.twilio.com/2010-04-01}
+      account-sid: ${APP_WHATSAPP_TWILIO_ACCOUNT_SID:}
+      auth-token: ${APP_WHATSAPP_TWILIO_AUTH_TOKEN:}
   jwt:
     # Placeholder -- override via APP_JWT_SECRET env var in real deployments, never commit a real secret.
     secret: ${APP_JWT_SECRET:REPLACE_WITH_A_LONG_RANDOM_SECRET_CHANGE_ME_1234567890}

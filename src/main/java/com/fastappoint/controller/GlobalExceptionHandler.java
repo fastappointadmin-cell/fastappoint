@@ -9,6 +9,7 @@ import com.fastappoint.exception.ForbiddenException;
 import com.fastappoint.exception.InvalidAppointmentException;
 import com.fastappoint.exception.ResourceNotFoundException;
 import com.fastappoint.exception.ServiceNotFoundException;
+import com.fastappoint.exception.WhatsAppConnectionException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpStatus;
@@ -102,6 +103,18 @@ public class GlobalExceptionHandler {
                 request.getRequestURI()
         );
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(WhatsAppConnectionException.class)
+    public ResponseEntity<ErrorResponse> handleWhatsAppConnection(
+            WhatsAppConnectionException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                "WhatsApp Connection Error",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(EmailAlreadyInUseException.class)

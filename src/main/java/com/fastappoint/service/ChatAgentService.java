@@ -1,10 +1,12 @@
 package com.fastappoint.service;
 
 import com.fastappoint.domain.Business;
+import com.fastappoint.domain.WhatsAppConnection;
 import com.fastappoint.dto.ChatAgentResponseDTO;
 import com.fastappoint.dto.ChatInboundMessageRequest;
 import com.fastappoint.dto.ServiceDTO;
 import com.fastappoint.exception.InvalidAppointmentException;
+import com.fastappoint.repository.WhatsAppConnectionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,17 +24,23 @@ public class ChatAgentService {
     private final BusinessPhoneNumberService phoneNumbers;
     private final ChatLlmService chatLlmService;
     private final ChatConversationService chatConversationService;
+    private final WhatsAppConnectionRepository whatsAppConnections;
+    private final WhatsAppCloudApiClient whatsAppCloudApiClient;
 
     public ChatAgentService(BusinessService businesses,
                             BusinessServiceService services,
                             BusinessPhoneNumberService phoneNumbers,
                             ChatLlmService chatLlmService,
-                            ChatConversationService chatConversationService) {
+                            ChatConversationService chatConversationService,
+                            WhatsAppConnectionRepository whatsAppConnections,
+                            WhatsAppCloudApiClient whatsAppCloudApiClient) {
         this.businesses = businesses;
         this.services = services;
         this.phoneNumbers = phoneNumbers;
         this.chatLlmService = chatLlmService;
         this.chatConversationService = chatConversationService;
+        this.whatsAppConnections = whatsAppConnections;
+        this.whatsAppCloudApiClient = whatsAppCloudApiClient;
     }
 
     public ChatAgentResponseDTO handleInbound(ChatInboundMessageRequest request) {
@@ -89,7 +97,12 @@ public class ChatAgentService {
                 if (messages.isEmpty()) {
                     continue;
                 }
-                String toPhoneNumber = extractToPhoneNumber(value);
+                String phoneNumberId = extractPhoneNumberId(value);
+                Business business = whatsAppConnections.findByMetaPhoneNumberId(phoneNumberId)
+                        .map(WhatsAppConnection::getBusiness)
+                        .orElseThrow(() -> new InvalidAppointmentException(
+                                "No business is connected to WhatsApp number " + phoneNumberId));
+
                 for (Map<String, Object> message : messages) {
                     String fromPhoneNumber = asString(message.get("from"));
                     Map<String, Object> text = asObjectMap(message.get("text"));
@@ -98,12 +111,17 @@ public class ChatAgentService {
                         continue;
                     }
 
+                    // business.getChatPhoneNumber() (not Meta's raw display string) is what handleInbound
+                    // resolves the business by -- guarantees an exact match regardless of how Meta formats
+                    // the display number, since we already resolved the business by the stable phone_number_id.
                     ChatInboundMessageRequest request = new ChatInboundMessageRequest();
-                    request.setToPhoneNumber(toPhoneNumber);
+                    request.setToPhoneNumber(business.getChatPhoneNumber());
                     request.setFromPhoneNumber(fromPhoneNumber);
                     request.setCustomerName(resolveCustomerName(value, fromPhoneNumber));
                     request.setMessage(messageBody);
-                    responses.add(handleInbound(request));
+                    ChatAgentResponseDTO response = handleInbound(request);
+                    responses.add(response);
+                    whatsAppCloudApiClient.sendMessage(phoneNumberId, fromPhoneNumber, response.getReply());
                 }
             }
         }
@@ -119,16 +137,18 @@ public class ChatAgentService {
         return response;
     }
 
-    private String extractToPhoneNumber(Map<String, Object> value) {
+    /** Routes by Meta's stable {@code phone_number_id}, not the human-readable {@code display_phone_number} --
+     * the latter's formatting isn't guaranteed to match how we normalized/stored the number ourselves. */
+    private String extractPhoneNumberId(Map<String, Object> value) {
         Map<String, Object> metadata = asObjectMap(value.get("metadata"));
         if (metadata.isEmpty()) {
             throw new InvalidAppointmentException("Invalid WhatsApp webhook payload: missing metadata");
         }
-        String displayPhoneNumber = asString(metadata.get("display_phone_number"));
-        if (displayPhoneNumber.isBlank()) {
-            throw new InvalidAppointmentException("Invalid WhatsApp webhook payload: missing metadata.display_phone_number");
+        String phoneNumberId = asString(metadata.get("phone_number_id"));
+        if (phoneNumberId.isBlank()) {
+            throw new InvalidAppointmentException("Invalid WhatsApp webhook payload: missing metadata.phone_number_id");
         }
-        return displayPhoneNumber;
+        return phoneNumberId;
     }
 
     private String resolveCustomerName(Map<String, Object> value, String fromPhoneNumber) {
